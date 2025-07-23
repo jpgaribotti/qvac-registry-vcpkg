@@ -6,16 +6,12 @@ vcpkg_from_github(
   REF ${VERSION}
   SHA512 aea24debb836131d14d362ff78c6d12cfe2e82188340e69e71e6874a1fa51fa9405f2c03fe43888b1ff4183f4288bf64f07dd1106224b0108c3e0f844989a409
   HEAD_REF master
-  PATCHES 
-      0001-fix-vcpkg-build.patch
-      0002-fix-apple-silicon-cross-compile.patch
+  PATCHES
+    0001-fix-vcpkg-build.patch
+    0002-fix-apple-silicon-cross-compile.patch
 )
 
 set(PLATFORM_OPTIONS)
-
-# if (VCPKG_TARGET_IS_OSX OR VCPKG_TARGET_IS_IOS)
-#   list(APPEND PLATFORM_OPTIONS -DWHISPER_COREML=ON)
-# endif()
 
 if (VCPKG_TARGET_IS_ANDROID)
   list(APPEND PLATFORM_OPTIONS -DWHISPER_NO_AVX=ON -DWHISPER_NO_AVX2=ON -DWHISPER_NO_FMA=ON)
@@ -24,6 +20,8 @@ endif()
 vcpkg_cmake_configure(
   SOURCE_PATH "${SOURCE_PATH}"
   OPTIONS
+    -DGGML_CCACHE=OFF
+    -DGGML_OPENMP=OFF
     -DWHISPER_BUILD_TESTS=OFF
     -DWHISPER_BUILD_EXAMPLES=OFF
     -DWHISPER_BUILD_SERVER=OFF
@@ -51,4 +49,4 @@ if (VCPKG_LIBRARY_LINKAGE MATCHES "static")
   file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/bin")
 endif()
 
-vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE") 
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
