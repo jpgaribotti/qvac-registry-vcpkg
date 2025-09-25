@@ -82,9 +82,11 @@
   "features": {
     "coreml-ep": {
       "description": "Build with CoreML EP",
-      "dependencies": [
-        "fp16"
-      ]
+      "supports": "osx | ios"
+    },
+    "nnapi-ep": {
+      "description": "Build with Android NNAPI EP",
+      "supports": "android"
     },
     "dml-ep": {
       "description": "Build with CoreML EP",
