@@ -25,8 +25,7 @@ if(VCPKG_CMAKE_SYSTEM_NAME STREQUAL "Android")
   list(APPEND ONNXRUNTIME_PATCHES
     "07-fix-nnapi-export.patch"
   )
-  string(APPEND CMAKE_C_FLAGS " -D__ANDROID__")
-  string(APPEND CMAKE_CXX_FLAGS " -D__ANDROID__")
+
 endif()
 
 vcpkg_from_github(
@@ -40,8 +39,6 @@ vcpkg_from_github(
 # Android build options
 set(ANDROID_BUILD_OPTIONS "")
 if(VCPKG_CMAKE_SYSTEM_NAME STREQUAL "Android")
-  set(ANDROID_EXTRA_CXX "-DUSE_EIGEN_BFLOAT16=1 -I${CURRENT_INSTALLED_DIR}/include/eigen3")
-  string(APPEND CMAKE_CXX_FLAGS " ${ANDROID_EXTRA_CXX}")
 
   set(ANDROID_BUILD_OPTIONS
     -DMLAS_USE_EIGEN_BFLOAT16=ON
