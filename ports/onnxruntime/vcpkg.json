@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "onnxruntime",
   "version": "1.21.0",
-  "port-version": 4,
+  "port-version": 5,
   "description": "ONNX Runtime: cross-platform, high performance ML inferencing and training accelerator",
   "homepage": "https://onnxruntime.ai/",
   "license": "MIT",
@@ -93,6 +93,9 @@
           "platform": "windows"
         }
       ]
+    },
+    "minimal-build": {
+      "description": "Build with --minimal_build option"
     },
     "nnapi-ep": {
       "description": "Build with Android NNAPI EP",

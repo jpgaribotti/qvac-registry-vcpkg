@@ -28,11 +28,17 @@ if(VCPKG_CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR VCPKG_CMAKE_SYSTEM_NAME STREQUAL
 endif()
 
 # Add extra patches only for Android builds
-if(VCPKG_CMAKE_SYSTEM_NAME STREQUAL "Android")
+if(VCPKG_CMAKE_SYSTEM_NAME STREQUAL "Android" AND NOT "minimal-build" IN_LIST FEATURES)
   message(STATUS "Applying Android-specific patches (NNAPI)...")
   list(APPEND ONNXRUNTIME_PATCHES
     "07-fix-nnapi-export.patch"
   ) 
+endif()
+
+if("minimal-build" IN_LIST FEATURES)
+  list(APPEND ONNXRUNTIME_PATCHES
+    "09-fix-minimal-build-onnx-onnx-proto-issue.patch"
+  )
 endif()
 
 vcpkg_from_github(
@@ -42,18 +48,6 @@ vcpkg_from_github(
   SHA512 028a7f48f41d2e8a453aae25ebc4cd769db389401937928b7d452fab5f8d7af8cb63eb4150daf79589845528f0e4c3bdfefa27af70d3630398990c9e8b85387b
   PATCHES ${ONNXRUNTIME_PATCHES}
 )
-
-# Android build options
-set(ANDROID_BUILD_OPTIONS "")
-if(VCPKG_CMAKE_SYSTEM_NAME STREQUAL "Android")
-
-  set(ANDROID_BUILD_OPTIONS
-    -DMLAS_USE_EIGEN_BFLOAT16=ON
-    -Donnxruntime_ENABLE_ANDROID_NNAPI=ON
-    -Donnxruntime_USE_NEON=ON
-    -Donnxruntime_USE_OPENMP=ON
-  )
-endif()
 
 # Apple build options
 set(APPLE_BUILD_OPTIONS "")
@@ -101,6 +95,7 @@ vcpkg_check_features(
       nnapi-ep onnxruntime_USE_NNAPI_BUILTIN
       coreml-ep onnxruntime_USE_COREML
       dml-ep onnxruntime_USE_DML
+      minimal-build onnxruntime_MINIMAL_BUILD
       tests onnxruntime_BUILD_UNIT_TESTS
 )
 
@@ -115,7 +110,6 @@ vcpkg_cmake_configure(
     -Donnxruntime_DISABLE_RTTI=OFF
     -Donnxruntime_DISABLE_EXCEPTIONS=OFF
     ${FEATURE_OPTIONS}
-    ${ANDROID_BUILD_OPTIONS}
     ${APPLE_BUILD_OPTIONS}
 )
 
