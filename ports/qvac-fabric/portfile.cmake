@@ -2,7 +2,7 @@ vcpkg_from_github(
   OUT_SOURCE_PATH SOURCE_PATH
   REPO tetherto/qvac-fabric-llm.cpp
   REF v${VERSION}
-  SHA512 b3ff2597e80189d1f6656a11c91291eb70febff69df59645426b6bfcfc3b71a7df5d0a9652424984b8d0f504b927a3471b967b034e8450ee3e93d64e0e7c1d29
+  SHA512 87222bfaf8d54edafd4b35e1c06bcbfbd2ea937502c135914c40f62da14c092e19a3c4da1d38960a0df2b5d0ea88f371f35a38fe0f6ff33b5159ca68b31319ae
 )
 
 # Upstream CMake options only — passed through to vcpkg_cmake_configure.
@@ -22,7 +22,6 @@ vcpkg_check_features(
     kleidiai BUILD_KLEIDIAI
     openmp BUILD_OPENMP
     hip-backend BUILD_HIP_BACKEND
-    webgpu BUILD_WEBGPU
     cuda-backend BUILD_CUDA_BACKEND
     cuda-jetson-backend BUILD_CUDA_JETSON_BACKEND
     rpc-server BUILD_RPC_SERVER
@@ -234,18 +233,6 @@ if (VCPKG_TARGET_IS_ANDROID AND BUILD_GPU_BACKENDS)
   list(APPEND PLATFORM_OPTIONS -DGGML_OPENCL=ON)
 endif()
 
-# WebGPU rides on the dawn port from the official registry (Dawn built from
-# source under the same triplet, so a clang/libc++ triplet never links a
-# libstdc++-built Dawn). Orthogonal to gpu-backends: it is the speech stack's
-# opt-in backend and lands as one more runtime-loaded module under
-# GGML_BACKEND_DL. ggml-webgpu embeds its WGSL shaders with a Python script at
-# configure time, hence the explicit interpreter.
-set(WEBGPU_OPTIONS -DGGML_WEBGPU=OFF)
-if(BUILD_WEBGPU)
-  vcpkg_find_acquire_program(PYTHON3)
-  set(WEBGPU_OPTIONS -DGGML_WEBGPU=ON "-DPython3_EXECUTABLE=${PYTHON3}")
-endif()
-
 if(BUILD_GPU_BACKENDS AND NOT VCPKG_TARGET_IS_OSX AND NOT VCPKG_TARGET_IS_IOS)
   if(VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW)
     string(APPEND VCPKG_C_FLAGS " /I${CURRENT_INSTALLED_DIR}/include")
@@ -322,7 +309,6 @@ vcpkg_cmake_configure(
     -DLLAMA_ALL_WARNINGS=OFF
     ${LLAMA_OPTIONS}
     ${PLATFORM_OPTIONS}
-    ${WEBGPU_OPTIONS}
     ${FEATURE_OPTIONS}
 )
 
