@@ -24,7 +24,7 @@ The ONNX Runtime stack — `onnxruntime`, `onnx`, and the `eigen3`, `pybind11`, 
 | `tts` | Chatterbox, Supertonic, CosyVoice3, Parler, Audio8, LavaSR | `tts-cpp` | `tts-cpp::tts-cpp` |
 | `audiogen` | ACE-Step music generation | `audiogen-cpp` | `audiogen-cpp::audiogen-cpp` |
 
-Backend features (`metal`, `vulkan`, `opencl`) fan out to the matching `ggml-speech` features, so a manifest entry like the one below resolves one shared `ggml-speech` with unified features:
+Backend features (`metal`, `vulkan`, `opencl`, `cuda`, `webgpu`) fan out to the matching `ggml-speech` features, so a manifest entry like the one below resolves one shared `ggml-speech` with unified features:
 
 ```json
 {
@@ -32,6 +32,37 @@ Backend features (`metal`, `vulkan`, `opencl`) fan out to the matching `ggml-spe
   "default-features": false,
   "features": ["whisper", "parakeet", "vulkan"]
 }
+```
+
+`webgpu` is opt-in on every platform and builds Google Dawn from the `dawn` port of microsoft/vcpkg, which this registry does not carry. A consumer that enables it pins Dawn itself:
+
+- Add `dawn`, `vulkan-headers`, `vulkan-utility-libraries` and `vcpkg-get-python-packages` to the microsoft/vcpkg entry's `packages` in `vcpkg-configuration.json`. The override below resolves `dawn` even when that entry's baseline predates the port.
+- Pin `dawn` to `20260410.140140` in the manifest's `overrides`. It is the newest version the speech-branch `ggml-webgpu` compiles against; 20260911 changed the uncaptured-error callback signature.
+- List `dawn` as a top-level dependency with `"default-features": false`. vcpkg only honours that flag in the top-level manifest, and Dawn's Linux defaults (`x11`, `gl`, `gles`) need X11 development headers on the build host. `ggml-speech[webgpu]` still requests the `vulkan` or `metal` feature it needs.
+
+```json
+{
+  "dependencies": [
+    { "name": "dawn", "default-features": false },
+    { "name": "speech-cpp", "default-features": false, "features": ["tts", "webgpu"] }
+  ],
+  "overrides": [
+    { "name": "dawn", "version": "20260410.140140" }
+  ]
+}
+```
+
+`speech-cpp[audiogen]` includes the explicit full MiniMax Core ML runtime on
+macOS, enabling `AUDIOGEN_MINIMAX_COREML` alongside ACE-Step and MiniMax.
+At runtime set both `coreml_profile_dir` and `coreml_compute_units`; the full
+stateful runtime requires macOS 15+. Linux, Windows and mobile builds keep
+this runtime disabled. The existing `coreml` feature still controls the
+engines' automatic sidecars independently.
+
+Run the speech feature-routing regression tests with CMake and vcpkg installed:
+
+```bash
+VCPKG_ROOT=/path/to/vcpkg python3 -m unittest discover -s tests -p test_speech_cpp_features.py
 ```
 
 `speech-cpp` replaced the per-engine `whisper-cpp`, `parakeet-cpp`, `tts-cpp` and `audiogen-cpp` ports, which pinned the same upstream repo at four different commits. Those ports were removed once every consumer had migrated, so manifests that still name them no longer resolve — depend on the matching `speech-cpp` feature instead.
@@ -99,3 +130,9 @@ Backend features (`metal`, `vulkan`, `opencl`) fan out to the matching `ggml-spe
 | 2 | Add this registry in `vcpkg-configuration.json` with `kind: "git"`, `repository`: `https://github.com/tetherto/qvac-registry-vcpkg.git`, and a `baseline` (e.g. `main` or a commit/tag). |
 | 3 | List needed packages in `"packages"` or use `["*"]` to allow all. |
 | 4 | Add the ports you need in your `vcpkg.json` or install them via the vcpkg CLI. |
+
+## Optional Whisper Core ML acceleration
+
+`speech-cpp[whisper,coreml]` enables the Whisper encoder and retains fallback
+when its optional sidecar is absent. The native loaded state is available
+through `whisper_encoder_on_coreml`.

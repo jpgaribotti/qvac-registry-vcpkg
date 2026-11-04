@@ -31,8 +31,8 @@ set(VCPKG_BUILD_TYPE release)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO tetherto/qvac-fabric-speech.cpp
-    REF 303198cf7a6e7c46c0e6b1be2add68468026793b
-    SHA512 c0c3be68113b23e1f9b70783924d0f75d5ca5a427ad32ce603ae44ce4ad05d078e7ebb0884877ca959f555f7339093a91045db0bd2871b6503d17ff7c7557ff6
+    REF 9573643d53be86f08bc072eaaf3a5408501d8bf4
+    SHA512 7edf05566e78f84894d9477164ce4894db3d2223a35e084281e22a99d37f140b115c92ebf9ecf93964f076c340ceb1f65f87fbea06fd91a795a78c82f8309499
     HEAD_REF master
 )
 
@@ -58,6 +58,11 @@ foreach(SPEECH_ENGINE IN LISTS SPEECH_ENGINE_FEATURES)
     endif()
 endforeach()
 
+set(SPEECH_MINIMAX_COREML OFF)
+if(VCPKG_TARGET_IS_OSX AND SPEECH_BUILD_AUDIOGEN)
+    set(SPEECH_MINIMAX_COREML ON)
+endif()
+
 # Unreachable through a default install (the whisper feature is a default);
 # guards a manifest that sets default-features false and picks only backends.
 if (NOT SPEECH_ENABLED_ENGINES)
@@ -79,6 +84,9 @@ vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
         vulkan  GGML_VULKAN
         opencl  GGML_OPENCL
         cuda    GGML_CUDA
+        webgpu  GGML_WEBGPU
+        coreml  WHISPER_COREML
+        coreml  WHISPER_COREML_ALLOW_FALLBACK
         coreml  PARAKEET_COREML
         coreml  TTS_CPP_COREML
         coreml  AUDIOGEN_COREML
@@ -148,6 +156,7 @@ vcpkg_cmake_configure(
         -DAUDIOGEN_BUILD_LIBRARY=ON
         -DAUDIOGEN_INSTALL=ON
         -DAUDIOGEN_CCACHE=OFF
+        -DAUDIOGEN_MINIMAX_COREML=${SPEECH_MINIMAX_COREML}
         # shared ggml-side knobs the engines forward
         -DGGML_NATIVE=OFF
         -DGGML_OPENMP=OFF
@@ -155,9 +164,13 @@ vcpkg_cmake_configure(
         ${FEATURE_OPTIONS}
         ${PLATFORM_OPTIONS}
     MAYBE_UNUSED_VARIABLES
+        GGML_WEBGPU
+        WHISPER_COREML
+        WHISPER_COREML_ALLOW_FALLBACK
         PARAKEET_COREML
         TTS_CPP_COREML
         AUDIOGEN_COREML
+        AUDIOGEN_MINIMAX_COREML
 )
 
 vcpkg_cmake_install()

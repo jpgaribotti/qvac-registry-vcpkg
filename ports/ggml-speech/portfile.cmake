@@ -1,8 +1,8 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO tetherto/qvac-ext-ggml
-    REF 1bb92ec5d99c069d9fb7d15abd642ae24f5371c0
-    SHA512 46b8ba2596b5f8a3468f603969fc798dbd03d607cd8b22505c6eec8f4eeffa2146cade27042498a0ac4024f8c41fc45b643c938f9aba01b4bd73c98813d4991c
+    REF 380c5f9f3e1811dfd88adeb1c19ab887bcf8ab3e
+    SHA512 287656a82b0eab1606ad8962095edfe44c1b549587995777c75bfc67a77fb36fb8ce65b1864438607d804181f8241960a9d7d9c65a269665e8db5dd945fe2873
     HEAD_REF speech
 )
 
@@ -10,6 +10,7 @@ set(GGML_METAL  OFF)
 set(GGML_VULKAN OFF)
 set(GGML_CUDA   OFF)
 set(GGML_OPENCL OFF)
+set(GGML_WEBGPU OFF)
 set(GGML_METAL_FUSE_MV_BIAS OFF)
 
 if("metal" IN_LIST FEATURES)
@@ -91,6 +92,17 @@ if("opencl" IN_LIST FEATURES)
     set(GGML_OPENCL ON)
 endif()
 
+# WebGPU rides on the dawn port from the official registry (Dawn built from
+# source under the same triplet, so a clang/libc++ triplet never links a
+# libstdc++-built Dawn). ggml-webgpu embeds its WGSL shaders with a Python
+# script at configure time, hence the explicit interpreter.
+set(GGML_WEBGPU_OPTIONS "")
+if("webgpu" IN_LIST FEATURES)
+    set(GGML_WEBGPU ON)
+    vcpkg_find_acquire_program(PYTHON3)
+    list(APPEND GGML_WEBGPU_OPTIONS "-DPython3_EXECUTABLE=${PYTHON3}")
+endif()
+
 if(VCPKG_TARGET_IS_ANDROID AND "vulkan" IN_LIST FEATURES)
     include(${CMAKE_CURRENT_LIST_DIR}/android-vulkan-version.cmake)
     detect_ndk_vulkan_version()
@@ -111,6 +123,14 @@ if(VCPKG_TARGET_IS_ANDROID AND "vulkan" IN_LIST FEATURES)
 endif()
 
 set(PLATFORM_OPTIONS)
+
+# nvcc before CUDA 13.4 cannot compile libc++ host code. Keep the CUDA
+# module and its private ggml-base on libstdc++, linked statically and hidden
+# behind the loader's C entry points. Other backends retain the triplet STL.
+if(VCPKG_TARGET_IS_LINUX AND GGML_CUDA)
+    list(APPEND PLATFORM_OPTIONS
+        "-DCMAKE_PROJECT_ggml_INCLUDE=${CMAKE_CURRENT_LIST_DIR}/linux-cuda-runtime.cmake")
+endif()
 
 # tinyBLAS GEMM for the F16 and Q8_0 weights: measured 1.2x on x86 (7950X3D,
 # Ryzen AI MAX+ 395) and 1.7x at F16 on Apple silicon for Parakeet; other
@@ -228,6 +248,8 @@ vcpkg_cmake_configure(
         -DGGML_VULKAN=${GGML_VULKAN}
         -DGGML_CUDA=${GGML_CUDA}
         -DGGML_OPENCL=${GGML_OPENCL}
+        -DGGML_WEBGPU=${GGML_WEBGPU}
+        ${GGML_WEBGPU_OPTIONS}
         -DGGML_HEXAGON=OFF
         -DGGML_METAL_FUSE_MV_BIAS=${GGML_METAL_FUSE_MV_BIAS}
         -DGGML_LIB_OUTPUT_PREFIX=qvac-speech-
@@ -291,6 +313,16 @@ if(QVAC_LINUX_ARM64_DL_CPU)
                 "${CURRENT_PACKAGES_DIR}${_cfg}/lib/libqvac-speech-ggml-cpu-${_unmeasured_tier}.so")
         endforeach()
     endforeach()
+endif()
+
+# Check the actual staged payload after desktop modules have been copied
+# from bin/ to lib/, including debug modules when that configuration is built.
+if(VCPKG_TARGET_IS_LINUX AND QVAC_DESKTOP_DL)
+    include("${CMAKE_CURRENT_LIST_DIR}/qvac-check-cxx-runtime.cmake")
+    file(GLOB QVAC_MODULES
+        "${CURRENT_PACKAGES_DIR}/lib/*.so"
+        "${CURRENT_PACKAGES_DIR}/debug/lib/*.so")
+    qvac_check_cxx_runtime(${QVAC_MODULES})
 endif()
 
 vcpkg_cmake_config_fixup(PACKAGE_NAME ggml CONFIG_PATH share/ggml)
